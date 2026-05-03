@@ -1,0 +1,79 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-200d739a9f2edfeea096.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Open-electronic-classroom",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "Open-electronic-classroom::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Open-electronic-classroom-Debug-105ed88b33d6efdcc00f.json",
+					"name" : "Open-electronic-classroom",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "Open-electronic-classroom_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Open-electronic-classroom_autogen-Debug-f5d2867445e2673c953e.json",
+					"name" : "Open-electronic-classroom_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "Open-electronic-classroom_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Open-electronic-classroom_autogen_timestamp_deps-Debug-223c14cd64f0224ab7f7.json",
+					"name" : "Open-electronic-classroom_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "E:/Open-electronic-classroom/ui/Open-electronic-classroom/build/Desktop_Qt_6_5_3_MinGW_64_bit-Debug",
+		"source" : "E:/Open-electronic-classroom/ui/Open-electronic-classroom"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

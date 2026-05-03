@@ -1,0 +1,3 @@
+# Hashes of file build rules.
+6335176c6a64f517c6b799a959842907 CMakeFiles/Open-electronic-classroom_autogen
+5c9185a8a0a53e09ddb7520b7d7839cb Open-electronic-classroom_autogen/timestamp
