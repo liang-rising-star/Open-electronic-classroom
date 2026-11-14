@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>OecDesktop</RootNamespace>
+    <AssemblyName>Open-electronic-classroom</AssemblyName>
+    <ApplicationIcon>..\icon\app-icon.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <!-- 把网页与图标按原目录结构拷到输出目录，页面里的 ../icon/... 相对路径保持不变 -->
+  <ItemGroup>
+    <Content Include="..\web-console\**\*" Link="web\web-console\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\icon\first\app-icon.png" Link="web\icon\first\app-icon.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\icon\app-icon.ico" Link="app-icon.ico" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

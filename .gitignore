@@ -1,0 +1,26 @@
+# ==========================
+# Open-electronic-classroom
+# ==========================
+
+# ---- .NET 构建产物 ----
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.pdb
+publish/
+.vs/
+
+# ---- 工具缓存 ----
+.mimocode/
+node_modules/
+
+# ---- 临时素材与截图 ----
+*.psd
+IMG*.jpg
+browser-screenshots/
+
+# ---- 系统杂物 ----
+.DS_Store
+Thumbs.db
+*.log
