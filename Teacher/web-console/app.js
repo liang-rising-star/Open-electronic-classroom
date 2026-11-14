@@ -1,6 +1,6 @@
 (() => {
   /* ---------------- 数据 ---------------- */
-  const MACHINES = [
+  let MACHINES = [
     { id: "PC-01", user: "陈一诺", ip: "192.168.10.11", row: "A", state: "active" },
     { id: "PC-02", user: "林小满", ip: "192.168.10.12", row: "A", state: "active" },
     { id: "PC-03", user: "周予安", ip: "192.168.10.13", row: "A", state: "locked" },
@@ -63,6 +63,104 @@
   const policyDialog = $("#policyDialog");
   const settingsDialog = $("#settingsDialog");
 
+  /* ---------------- 后端接口 ----------------
+     以 http(s) 打开时走后端（Python server），直接双击本地文件时自动退化为纯前端演示。 */
+  const API = {
+    online: location.protocol === "http:" || location.protocol === "https:",
+    base: "/api",
+    async init() {
+      if (!this.online) return false;
+      try {
+        const res = await fetch(`${this.base}/state`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        applyServerState(data.state);
+        this.listen();
+        return true;
+      } catch (err) {
+        this.online = false;
+        return false;
+      }
+    },
+    listen() {
+      try {
+        const source = new EventSource(`${this.base}/events`);
+        source.addEventListener("message", (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === "state") applyServerState(message.data);
+          } catch (err) {
+            /* 忽略无法解析的消息 */
+          }
+        });
+      } catch (err) {
+        /* EventSource 不可用则保持本地模式 */
+      }
+    },
+    async send(action, machines, payload) {
+      if (!this.online) return false;
+      try {
+        const res = await fetch(`${this.base}/command`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action, machines, payload })
+        });
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (data.state) applyServerState(data.state);
+        return true;
+      } catch (err) {
+        this.online = false;
+        return false;
+      }
+    }
+  };
+
+  // 后端快照 → 界面。服务端是机器、投屏、策略、设置的唯一真相。
+  function applyServerState(snapshot) {
+    if (!snapshot) return;
+
+    if (Array.isArray(snapshot.machines)) {
+      MACHINES = snapshot.machines.map((m) => ({ ...m }));
+      const ids = new Set(MACHINES.map((m) => m.id));
+      state.selected = new Set([...state.selected].filter((id) => ids.has(id)));
+    }
+
+    if (snapshot.casting) {
+      state.casting = Boolean(snapshot.casting.on);
+      if (snapshot.casting.source) state.source = snapshot.casting.source;
+      if (snapshot.casting.scope) state.scope = snapshot.casting.scope;
+      castDraft = { source: state.source, scope: state.scope };
+    }
+
+    if (snapshot.policy) {
+      state.whitelist = [...(snapshot.policy.whitelist || [])];
+      state.policy = {
+        block: Boolean(snapshot.policy.block),
+        log: Boolean(snapshot.policy.log)
+      };
+    }
+
+    if (snapshot.settings) {
+      state.settings = { ...state.settings, ...snapshot.settings };
+      state.columns =
+        state.settings.columns === "每行 4 台" ? 4 : state.settings.columns === "每行 6 台" ? 6 : 0;
+    }
+
+    if (Array.isArray(snapshot.log)) {
+      const localOnly = state.log.filter((entry) => entry.local);
+      state.log = [...snapshot.log, ...localOnly].slice(0, 80);
+    }
+
+    renderLog();
+    render();
+  }
+
+  // 传给后端的机器集合：范围=选中且确实有选中时给 id 列表，否则空数组表示全部
+  function targetIds() {
+    return state.scope === "selected" && state.selected.size ? [...state.selected] : [];
+  }
+
   /* ---------------- 工具 ---------------- */
   const now = () =>
     new Date().toLocaleTimeString("zh-CN", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -76,8 +174,8 @@
     window.setTimeout(() => el.remove(), 2400);
   }
 
-  function log(action, detail = "") {
-    state.log.unshift({ time: now(), action, detail });
+  function log(action, detail = "", localOnly = false) {
+    state.log.unshift({ time: now(), action, detail, local: localOnly });
     if (state.log.length > 80) state.log.pop();
     renderLog();
   }
@@ -423,7 +521,7 @@
     const hits = idsInRect(drag.x0, drag.y0, event.clientX, event.clientY);
     applyDragSelection(hits, drag.additive, drag.base);
     if (hits.length) anchorId = hits[hits.length - 1];
-    log("框选", `${state.selected.size} 台`);
+    log("框选", `${state.selected.size} 台`, true);
     render();
   });
 
@@ -532,19 +630,19 @@
 
     if (act === "all") {
       selectAllVisible();
-      log("全选", `${visibleMachines().length} 台`);
+      log("全选", `${visibleMachines().length} 台`, true);
       render();
       return;
     }
     if (act === "invert") {
       invertVisible();
-      log("反选", "");
+      log("反选", "", true);
       render();
       return;
     }
     if (act === "clear") {
       clearSelection();
-      log("清除选择", "");
+      log("清除选择", "", true);
       render();
       return;
     }
@@ -554,6 +652,14 @@
     }
 
     if (act === "cast" && !state.casting) toggleCast(true);
+
+    const pickedIds = [...state.selected];
+    if (act === "lock") void API.send("lock", pickedIds, {});
+    else if (act === "remote") void API.send("remote", pickedIds, {});
+    else if (act === "restart" || act === "off" || act === "on") {
+      void API.send("power", pickedIds, { mode: act });
+    }
+
     const [name, said] = texts[act] || [act, act];
     log(name, `→ ${label}`);
     toast(`${said} · ${label}`);
@@ -579,6 +685,11 @@
       toast("投屏已停止");
     }
     renderChrome();
+    void API.send("cast", targetIds(), {
+      on: state.casting,
+      source: state.source,
+      scope: state.scope
+    });
   }
 
   const POWER_LABEL = { on: "开机", off: "关机", restart: "重启" };
@@ -590,6 +701,7 @@
     const tag = action === "on" ? "开机" : action === "off" ? "关机" : "重启";
     stageTitle.textContent = `${VIEW_TITLE[state.view]} · ${tag}`;
     window.setTimeout(() => { stageTitle.textContent = VIEW_TITLE[state.view]; }, 1400);
+    void API.send("power", targetIds(), { mode: action });
   }
 
   /* ---------------- 任务下发 ---------------- */
@@ -760,19 +872,19 @@
 
   $("#selectAllBtn").addEventListener("click", () => {
     selectAllVisible();
-    log("全选", `${visibleMachines().length} 台`);
+    log("全选", `${visibleMachines().length} 台`, true);
     render();
   });
 
   $("#invertBtn").addEventListener("click", () => {
     invertVisible();
-    log("反选", "");
+    log("反选", "", true);
     render();
   });
 
   $("#clearBtn").addEventListener("click", () => {
     clearSelection();
-    log("清除选择", "");
+    log("清除选择", "", true);
     render();
   });
 
@@ -784,24 +896,28 @@
     log(state.blank ? "黑屏肃静 开启" : "黑屏肃静 关闭", `→ ${target.label}`);
     toast(state.blank ? "黑屏肃静已开启" : "黑屏肃静已关闭");
     renderChrome();
+    void API.send("blank", targetIds(), { on: state.blank });
   });
 
   $("#lockBtn").addEventListener("click", () => {
     const target = targetScope();
     log("锁定屏幕", `→ ${target.label}`);
     toast(`锁定指令已下发 · ${target.label}`);
+    void API.send("lock", targetIds(), {});
   });
 
   $("#remoteBtn").addEventListener("click", () => {
     const target = targetScope();
     log("远程控制", `→ ${target.label}`);
     toast(`远程控制已进入 · ${target.label}`);
+    void API.send("remote", targetIds(), {});
   });
 
   $("#demoBtn").addEventListener("click", () => {
     const target = targetScope();
     log("学生演示", `→ ${target.label}`);
     toast(`学生演示已开启 · ${target.label}`);
+    void API.send("demo", targetIds(), {});
   });
 
   /* 控制台设置：草稿式 */
@@ -856,7 +972,7 @@
 
   $("#clearSelBtn").addEventListener("click", () => {
     state.selected.clear();
-    log("清除选择", "");
+    log("清除选择", "", true);
     render();
   });
 
@@ -881,9 +997,11 @@
     const cfg = TASK[activeTask];
     if (!cfg) return;
     const target = targetScope();
-    log(cfg.title, cfg.detail(target));
+    const detail = cfg.detail(target);
+    log(cfg.title, detail);
     toast(`${cfg.title}指令已下发 · ${target.label}`);
     closeDialog(taskDialog);
+    void API.send("task", targetIds(), { title: cfg.title, detail });
   });
 
   /* 白名单：弹窗内只改草稿，点保存才写入状态，取消即丢弃 */
@@ -966,6 +1084,11 @@
     log("白名单保存", `${state.whitelist.length} 个域名`);
     toast(`白名单已保存 · ${state.whitelist.length} 个域名`);
     closeDialog(policyDialog);
+    void API.send("policy", [], {
+      block: state.policy.block,
+      log: state.policy.log,
+      whitelist: state.whitelist
+    });
   });
 
   $("#settingsSave").addEventListener("click", () => {
@@ -978,6 +1101,10 @@
     toast("控制台设置已保存");
     closeDialog(settingsDialog);
     render();
+    void API.send("settings", [], {
+      defaultSource: state.settings.defaultSource,
+      columns: state.settings.columns
+    });
   });
 
   document.addEventListener("keydown", (event) => {
@@ -1014,4 +1141,7 @@
   render();
   tick();
   window.setInterval(tick, 1000);
+
+  // 有后端就以后端为准（本地双击打开时自动跳过）
+  void API.init();
 })();

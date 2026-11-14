@@ -22,6 +22,15 @@ dotnet run -c Release
 产物里会自带页面：`bin/Release/net8.0-windows/web/web-console/*`，`web/icon/first/app-icon.png`，
 以及窗口图标 `app-icon.ico`。
 
+默认加载随包静态页面（无后端，纯前端演示）。要连 Python 后端：
+
+```bash
+dotnet run -c Release -- --server=http://127.0.0.1:8800
+```
+
+此时不再做虚拟域名映射，直接把窗口指向 `http://127.0.0.1:8800/web-console/index.html`，
+页面里的 `/api/*` 请求与 SSE 都会走这个后端。
+
 ## 打包分发
 
 ```bash

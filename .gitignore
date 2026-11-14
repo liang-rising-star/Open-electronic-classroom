@@ -14,6 +14,8 @@ publish/
 # ---- 工具缓存 ----
 .mimocode/
 node_modules/
+__pycache__/
+*.pyc
 
 # ---- 临时素材与截图 ----
 *.psd

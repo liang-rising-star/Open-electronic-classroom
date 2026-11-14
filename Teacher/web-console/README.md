@@ -56,6 +56,12 @@
 | `app.js` | 机器数据、三种视图渲染、选择与筛选、操作条与日志 |
 | `preview.png` | 界面预览 |
 
+## 两种运行方式
+
+- **双击 `index.html`**：纯前端演示，机器数据写死在 `app.js` 的 `MACHINES` 数组里，改动只存在内存中。
+- **通过 `Teacher/server`（Python）打开**：页面检测到自己在 http(s) 下，会请求 `/api/state` 并把服务端作为唯一真相，
+  同时订阅 `/api/events`（SSE）接收实时变更；所有操作命令走 `/api/command`。
+
 ## 说明
 
 纯静态原型：设备数据写死在 `app.js` 的 `MACHINES` 数组里，交互只改前端状态，不连后端、不持久化。

@@ -15,11 +15,13 @@ internal sealed class HostForm : Form
     private readonly WebView2 _webView = new();
     private readonly bool _selfTest;
     private readonly string _selfTestOut;
+    private readonly string? _server;
 
-    public HostForm(bool selfTest = false, string? selfTestOut = null)
+    public HostForm(bool selfTest = false, string? selfTestOut = null, string? server = null)
     {
         _selfTest = selfTest;
         _selfTestOut = selfTestOut ?? "oec-selftest.json";
+        _server = string.IsNullOrWhiteSpace(server) ? null : server.TrimEnd('/');
         Text = "Open Electronic Classroom · 机房教师端";
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(1280, 800);
@@ -55,8 +57,22 @@ internal sealed class HostForm : Form
             await _webView.EnsureCoreWebView2Async(environment);
 
             var core = _webView.CoreWebView2;
-            core.SetVirtualHostNameToFolderMapping(
-                VirtualHost, WebRoot, CoreWebView2HostResourceAccessKind.Allow);
+
+            // 默认用随包静态页面；给了 --server 就以 Python 后端为准（页面会走 /api）
+            string origin;
+            string startPage;
+            if (_server is null)
+            {
+                core.SetVirtualHostNameToFolderMapping(
+                    VirtualHost, WebRoot, CoreWebView2HostResourceAccessKind.Allow);
+                origin = $"https://{VirtualHost}/";
+                startPage = StartPage;
+            }
+            else
+            {
+                origin = _server + "/";
+                startPage = origin + "web-console/index.html";
+            }
 
             // 桌面软件观感：去掉浏览器自己的右键菜单、状态栏与缩放控件
             core.Settings.AreDefaultContextMenusEnabled = false;
@@ -68,13 +84,13 @@ internal sealed class HostForm : Form
             core.NewWindowRequested += (_, e) => e.Handled = true;
             core.NavigationStarting += (_, e) =>
             {
-                if (!e.Uri.StartsWith($"https://{VirtualHost}/", StringComparison.OrdinalIgnoreCase))
+                if (!e.Uri.StartsWith(origin, StringComparison.OrdinalIgnoreCase))
                 {
                     e.Cancel = true;
                 }
             };
 
-            core.Navigate(StartPage);
+            core.Navigate(startPage);
 
             if (_selfTest)
             {
